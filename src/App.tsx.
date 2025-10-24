@@ -1,0 +1,25 @@
+import React from "react";
+import Header from "./components/Header";
+import Footer from "./components/Footer";
+import HeroSection from "./components/HeroSection";
+import Features from "./components/Features";
+import CallToAction from "./components/CallToAction";
+
+function App() {
+  return (
+    <>
+      <Header />
+
+      {/* ✅ Main landmark for accessibility */}
+      <main id="main-content" role="main" className="min-h-screen">
+        <HeroSection />
+        <Features />
+        <CallToAction />
+      </main>
+
+      <Footer />
+    </>
+  );
+}
+
+export default App;
