@@ -26,3 +26,5 @@ export function ClientLayout({
     </Suspense>
   )
 }
+
+export default ClientLayout
