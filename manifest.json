@@ -1,12 +1,72 @@
 {
-  "name": "Smart Design AI",
+  "name": "Smart Design AI by MSB07",
   "short_name": "SmartAI",
+  "description": "AI-Powered Design Platform - Transform your images into stunning designs",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#0b1220",
+  "categories": ["productivity", "graphics"],
+  "screenshots": [
+    {
+      "src": "/images/smart-design-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/images/smart-design-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "/images/smart-design-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/smart-design-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/smart-design-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Upload Design",
+      "short_name": "Upload",
+      "description": "Upload and convert your design",
+      "url": "/dashboard/upload",
+      "icons": [
+        {
+          "src": "/images/smart-design-logo.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "View History",
+      "short_name": "History",
+      "description": "View your design history",
+      "url": "/dashboard/history",
+      "icons": [
+        {
+          "src": "/images/smart-design-logo.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

@@ -2,9 +2,8 @@ import type React from "react"
 import type { Metadata } from "next"
 import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
-import { Analytics } from "@vercel/analytics/next"
-import { Suspense } from "react"
 import "./globals.css"
+import { ClientLayout } from "./client-layout"
 
 export const metadata: Metadata = {
   title: "Smart Design AI by MSB07 - AI-Powered Design Platform",
@@ -63,11 +62,35 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <meta name="theme-color" content="#0b1220" />
+        <meta name="mobile-web-app-capable" content="true" />
+        <meta name="apple-mobile-web-app-capable" content="true" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/images/smart-design-logo.png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                  navigator.serviceWorker.register('/service-worker.js').then(
+                    (registration) => {
+                      console.log('[v0] Service Worker registered:', registration);
+                    },
+                    (error) => {
+                      console.log('[v0] Service Worker registration failed:', error);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
+      </head>
       <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        <Suspense fallback={null}>
-          {children}
-          <Analytics />
-        </Suspense>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   )

@@ -1,0 +1,31 @@
+{
+  "appId": "com.smartdesignai.app",
+  "appName": "Smart Design AI",
+  "webDir": "out",
+  "server": {
+    "androidScheme": "https",
+    "url": "http://localhost:3000",
+    "cleartext": true
+  },
+  "ios": {
+    "contentInset": "automatic"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 3000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0b1220",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": true,
+      "spinnerColor": "#3b82f6"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "style": "dark"
+    }
+  }
+}

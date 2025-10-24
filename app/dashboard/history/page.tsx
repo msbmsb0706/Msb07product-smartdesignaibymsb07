@@ -106,51 +106,84 @@ export default function HistoryPage() {
     }
   }
 
-  const handleDownload = async (design: Design, format: "png" | "jpg" | "svg" | "pdf") => {
+  const handleDownload = async (
+    design: Design,
+    format: "png" | "jpg" | "svg" | "pdf" | "stl" | "obj" | "pcb" | "fabric",
+  ) => {
     try {
-      // In a real app, this would generate the actual file
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
+      if (format === "stl" || format === "obj" || format === "pcb" || format === "fabric") {
+        const formData = new FormData()
+        formData.append("format", format)
+        formData.append("userId", user.id)
 
-      // Set canvas size
-      canvas.width = 1920
-      canvas.height = 1080
+        const dummyFile = new File(["dummy"], "design.png", { type: "image/png" })
+        formData.append("file", dummyFile)
 
-      if (ctx) {
-        // Create a gradient background
-        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-        gradient.addColorStop(0, "#3b82f6")
-        gradient.addColorStop(1, "#8b5cf6")
-        ctx.fillStyle = gradient
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        const response = await fetch("/api/convert", {
+          method: "POST",
+          body: formData,
+        })
 
-        // Add title text
-        ctx.fillStyle = "white"
-        ctx.font = "bold 72px Arial"
-        ctx.textAlign = "center"
-        ctx.fillText(design.title, canvas.width / 2, canvas.height / 2)
+        if (!response.ok) {
+          throw new Error("Conversion failed")
+        }
 
-        // Add subtitle
-        ctx.font = "36px Arial"
-        ctx.fillText("Smart Design by MSB07", canvas.width / 2, canvas.height / 2 + 100)
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+
+        const fileExtensions: Record<string, string> = {
+          stl: "stl",
+          obj: "obj",
+          pcb: "gbr",
+          fabric: "svg",
+        }
+
+        a.download = `${design.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.${fileExtensions[format]}`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      } else {
+        const canvas = document.createElement("canvas")
+        const ctx = canvas.getContext("2d")
+
+        canvas.width = 1920
+        canvas.height = 1080
+
+        if (ctx) {
+          const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
+          gradient.addColorStop(0, "#3b82f6")
+          gradient.addColorStop(1, "#8b5cf6")
+          ctx.fillStyle = gradient
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+          ctx.fillStyle = "white"
+          ctx.font = "bold 72px Arial"
+          ctx.textAlign = "center"
+          ctx.fillText(design.title, canvas.width / 2, canvas.height / 2)
+
+          ctx.font = "36px Arial"
+          ctx.fillText("Smart Design by MSB07", canvas.width / 2, canvas.height / 2 + 100)
+        }
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement("a")
+              a.href = url
+              a.download = `${design.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.${format}`
+              document.body.appendChild(a)
+              a.click()
+              document.body.removeChild(a)
+              URL.revokeObjectURL(url)
+            }
+          },
+          `image/${format === "jpg" ? "jpeg" : format}`,
+        )
       }
-
-      // Convert to blob and download
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            const url = URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `${design.title.replace(/[^a-z0-9]/gi, "_").toLowerCase()}.${format}`
-            document.body.appendChild(a)
-            a.click()
-            document.body.removeChild(a)
-            URL.revokeObjectURL(url)
-          }
-        },
-        `image/${format === "jpg" ? "jpeg" : format}`,
-      )
     } catch (error) {
       console.error("Download error:", error)
       alert("Failed to download design. Please try again.")
@@ -354,6 +387,22 @@ export default function HistoryPage() {
                             <DropdownMenuItem onClick={() => handleDownload(design, "svg")}>
                               <Palette className="w-4 h-4 mr-2" />
                               SVG Vector
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(design, "stl")}>
+                              <FileImage className="w-4 h-4 mr-2" />
+                              3D Printable (.STL)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(design, "obj")}>
+                              <FileImage className="w-4 h-4 mr-2" />
+                              3D Model (.OBJ)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(design, "pcb")}>
+                              <FileImage className="w-4 h-4 mr-2" />
+                              PCB Layout (.GBR)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDownload(design, "fabric")}>
+                              <Palette className="w-4 h-4 mr-2" />
+                              Fabric Pattern (.SVG)
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleExportCode(design)}>
                               <Code className="w-4 h-4 mr-2" />

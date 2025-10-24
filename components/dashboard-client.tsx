@@ -4,9 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { CircuitBackground } from "@/components/circuit-background"
-import { AIAssistant } from "@/components/ai-assistant"
-import { ThreeDPreview } from "@/components/3d-preview"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
@@ -46,10 +43,10 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
     status: "success" | "error"
     message: string
     downloadUrl?: string
-    analysisDetails?: string // Added analysis details
+    analysisDetails?: string
   } | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [showAnalysis, setShowAnalysis] = useState(false) // Added analysis toggle
+  const [showAnalysis, setShowAnalysis] = useState(false)
 
   const router = useRouter()
   const supabase = createClient()
@@ -60,7 +57,7 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
       setSelectedFile(file)
       setPreviewUrl(URL.createObjectURL(file))
       setConversionResult(null)
-      setShowAnalysis(false) // Reset analysis view
+      setShowAnalysis(false)
     }
   }, [])
 
@@ -70,7 +67,7 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
       "image/*": [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp"],
     },
     maxFiles: 1,
-    maxSize: 10 * 1024 * 1024, // 10MB
+    maxSize: 10 * 1024 * 1024,
   })
 
   const handleSignOut = async () => {
@@ -88,7 +85,6 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
         url: window.location.href,
       })
     } catch (error) {
-      // Fallback to copying link
       navigator.clipboard.writeText(window.location.href)
       alert("Link copied to clipboard!")
     }
@@ -102,7 +98,6 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
     setConversionResult(null)
 
     try {
-      // Create FormData for file upload
       const formData = new FormData()
       formData.append("file", selectedFile)
       formData.append("outputFormat", outputFormat)
@@ -113,11 +108,10 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
             clearInterval(progressInterval)
             return prev
           }
-          return prev + Math.random() * 15 + 5 // More realistic progress
+          return prev + Math.random() * 15 + 5
         })
       }, 800)
 
-      // Call conversion API
       const response = await fetch("/api/convert", {
         method: "POST",
         body: formData,
@@ -133,7 +127,7 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
           status: "success",
           message: result.message,
           downloadUrl: result.downloadUrl,
-          analysisDetails: result.analysisDetails, // Store analysis details
+          analysisDetails: result.analysisDetails,
         })
       } else {
         setConversionResult({
@@ -169,11 +163,11 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
   const getFormatDescription = (format: OutputFormat) => {
     switch (format) {
       case "PCB Layout":
-        return "PCB Layout Converter - Transforms circuit sketches into professional PCB layouts with optimized trace routing, component placement, and manufacturing-ready Gerber files."
+        return "PCB Layout Converter - Transforms circuit sketches into professional PCB layouts with optimized trace routing."
       case "3D Printable File (.STL)":
-        return "3D Model Generator - Converts 2D designs into printable 3D models with proper mesh topology, wall thickness optimization, and support structure recommendations."
+        return "3D Model Generator - Converts 2D designs into printable 3D models with proper mesh topology."
       case "Fabric Pattern (.OBJ)":
-        return "Fabric Pattern Creator - Transforms designs into textile patterns with texture mapping, repeat calculations, and manufacturing specifications for fabric production."
+        return "Fabric Pattern Creator - Transforms designs into textile patterns with texture mapping."
       default:
         return ""
     }
@@ -181,21 +175,16 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
 
   return (
     <div className="min-h-screen bg-background relative">
-      <CircuitBackground />
-
       {/* Header */}
       <header className="relative z-10 border-b border-border/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="relative w-8 h-8">
-              <Image src="/logo.png" alt="Smart Design AI Logo" fill className="object-contain" />
-            </div>
             <span className="text-xl font-bold text-foreground">Smart Design AI</span>
           </div>
 
           <nav className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild>
-              <Link href="/dashboard/designs">
+              <Link href="/dashboard/history">
                 <History className="h-4 w-4 mr-2" />
                 My Designs
               </Link>
@@ -364,11 +353,11 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
               </CardContent>
             </Card>
 
-            {/* Results & 3D Preview Section */}
+            {/* Results & Download Section */}
             <Card className="bg-card/80 backdrop-blur-sm border-border/50">
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
-                  Results & Preview
+                  Results & Download
                   {conversionResult?.status === "success" && (
                     <Button variant="ghost" size="sm" onClick={handleShare}>
                       <Share2 className="h-4 w-4" />
@@ -431,17 +420,8 @@ export function DashboardClient({ user, profile }: DashboardClientProps) {
                     )}
                   </div>
                 )}
-
-                {outputFormat === "3D Printable File (.STL)" && conversionResult?.status === "success" && (
-                  <div className="mt-4">
-                    <ThreeDPreview modelUrl={conversionResult.downloadUrl} modelType="stl" />
-                  </div>
-                )}
               </CardContent>
             </Card>
-
-            {/* AI Assistant */}
-            <AIAssistant imageData={previewUrl || undefined} outputFormat={outputFormat || undefined} />
           </div>
         </div>
       </main>

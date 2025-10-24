@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload, ArrowLeft, ImageIcon, Sparkles, CheckCircle, AlertCircle, Cpu, Palette, Eye } from "lucide-react"
+import { Upload, ArrowLeft, ImageIcon, Sparkles, CheckCircle, AlertCircle, Cpu, Palette } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 
@@ -23,61 +23,27 @@ interface UploadState {
   designId?: string
 }
 
-type OutputFormat = "pcb" | "stl" | "fabric"
+type OutputFormat = "PCB Layout" | "3D Printable File (.STL)" | "Fabric Pattern (.OBJ)"
 
 const formatOptions = {
-  pcb: { label: "PCB Layout", icon: Cpu, description: "Convert to circuit board design using Flux.ai", color: "blue" },
-  stl: {
+  "PCB Layout": {
+    label: "PCB Layout",
+    icon: Cpu,
+    description: "Convert to circuit board design using Flux.ai",
+    color: "blue",
+  },
+  "3D Printable File (.STL)": {
     label: "3D Printable File (.STL)",
     icon: Sparkles,
     description: "Generate 3D model using Alpha3D",
     color: "green",
   },
-  fabric: {
+  "Fabric Pattern (.OBJ)": {
     label: "Fabric Pattern (.OBJ)",
     icon: Palette,
     description: "Create textile design using Hyper3D",
     color: "purple",
   },
-}
-
-const mockFluxAI = async (imageData: string, prompt: string) => {
-  // Simulate Flux.ai PCB layout generation
-  await new Promise((resolve) => setTimeout(resolve, 2000))
-  return {
-    success: true,
-    result_url: `/placeholder.svg?height=400&width=600&query=PCB layout design`,
-    analysis: "Detected electronic components and traces. Generated optimized PCB layout with proper routing.",
-  }
-}
-
-const mockAlpha3D = async (imageData: string, prompt: string) => {
-  // Simulate Alpha3D 3D model generation
-  await new Promise((resolve) => setTimeout(resolve, 2500))
-  return {
-    success: true,
-    result_url: `/placeholder.svg?height=400&width=600&query=3D printable model`,
-    analysis: "Analyzed image depth and structure. Generated printable 3D model with proper support structures.",
-  }
-}
-
-const mockHyper3D = async (imageData: string, prompt: string) => {
-  // Simulate Hyper3D fabric pattern generation
-  await new Promise((resolve) => setTimeout(resolve, 2000))
-  return {
-    success: true,
-    result_url: `/placeholder.svg?height=400&width=600&query=fabric pattern design`,
-    analysis: "Extracted pattern elements and textures. Created seamless fabric design with proper repeat.",
-  }
-}
-
-const performOCR = async (imageData: string) => {
-  await new Promise((resolve) => setTimeout(resolve, 1000))
-  return {
-    text: "Sample OCR text extracted from image",
-    confidence: 0.95,
-    elements: ["Text element 1", "Text element 2", "Diagram labels"],
-  }
 }
 
 export default function UploadPage() {
@@ -87,7 +53,7 @@ export default function UploadPage() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [aiPrompt, setAiPrompt] = useState("")
-  const [outputFormat, setOutputFormat] = useState<OutputFormat>("pcb")
+  const [outputFormat, setOutputFormat] = useState<OutputFormat>("PCB Layout")
   const [ocrResults, setOcrResults] = useState<any>(null)
   const [uploadState, setUploadState] = useState<UploadState>({
     status: "idle",
@@ -143,15 +109,6 @@ export default function UploadPage() {
     reader.onload = async (e) => {
       const imageData = e.target?.result as string
       setPreviewUrl(imageData)
-
-      try {
-        setUploadState({ status: "processing", progress: 10, message: "Analyzing image content..." })
-        const ocr = await performOCR(imageData)
-        setOcrResults(ocr)
-        setUploadState({ status: "idle", progress: 0, message: "" })
-      } catch (error) {
-        console.error("OCR analysis failed:", error)
-      }
     }
     reader.readAsDataURL(file)
 
@@ -175,76 +132,6 @@ export default function UploadPage() {
     e.preventDefault()
   }
 
-  const simulateAIProcessing = async (designId: string, format: OutputFormat, imageData: string, prompt: string) => {
-    const formatConfig = formatOptions[format]
-
-    try {
-      setUploadState({
-        status: "processing",
-        progress: 20,
-        message: `Connecting to ${format === "pcb" ? "Flux.ai" : format === "stl" ? "Alpha3D" : "Hyper3D"} API...`,
-        designId,
-      })
-
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      setUploadState({
-        status: "processing",
-        progress: 40,
-        message: "Analyzing image structure and content...",
-        designId,
-      })
-
-      let result
-      switch (format) {
-        case "pcb":
-          result = await mockFluxAI(imageData, prompt)
-          break
-        case "stl":
-          result = await mockAlpha3D(imageData, prompt)
-          break
-        case "fabric":
-          result = await mockHyper3D(imageData, prompt)
-          break
-      }
-
-      setUploadState({
-        status: "processing",
-        progress: 80,
-        message: `Generating ${formatConfig.label.toLowerCase()}...`,
-        designId,
-      })
-
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Update design in database
-      const supabase = createClient()
-      await supabase
-        .from("designs")
-        .update({
-          status: "completed",
-          processed_image_url: result.result_url,
-          ai_prompt: `${prompt} | Format: ${formatConfig.label} | Analysis: ${result.analysis}`,
-        })
-        .eq("id", designId)
-
-      setUploadState({
-        status: "completed",
-        progress: 100,
-        message: `${formatConfig.label} generated successfully!`,
-        designId,
-      })
-    } catch (error) {
-      console.error("AI processing error:", error)
-      setUploadState({
-        status: "error",
-        progress: 0,
-        message: "AI conversion failed. Please try a different image or format.",
-        designId,
-      })
-    }
-  }
-
   const handleUpload = async () => {
     if (!selectedFile || !user || !title.trim()) return
 
@@ -256,8 +143,29 @@ export default function UploadPage() {
 
     try {
       const supabase = createClient()
+      const formData = new FormData()
+      formData.append("file", selectedFile)
+      formData.append("outputFormat", outputFormat)
+      formData.append("prompt", aiPrompt.trim() || `Convert to ${outputFormat}`)
 
-      // Create design record
+      setUploadState({
+        status: "processing",
+        progress: 30,
+        message: `Processing with ${outputFormat}...`,
+      })
+
+      const response = await fetch("/api/convert", {
+        method: "POST",
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Conversion failed")
+      }
+
+      const result = await response.json()
+
       const { data: design, error: designError } = await supabase
         .from("designs")
         .insert({
@@ -266,26 +174,27 @@ export default function UploadPage() {
           description: description.trim() || null,
           ai_prompt: aiPrompt.trim() || null,
           original_image_url: previewUrl,
-          status: "processing",
+          processed_image_url: result.downloadUrl,
+          status: "completed",
+          conversion_type: outputFormat,
         })
         .select()
         .single()
 
       if (designError) throw designError
 
-      // Start AI processing
-      await simulateAIProcessing(
-        design.id,
-        outputFormat,
-        previewUrl!,
-        aiPrompt.trim() || `Convert to ${formatOptions[outputFormat].label}`,
-      )
+      setUploadState({
+        status: "completed",
+        progress: 100,
+        message: `${outputFormat} generated successfully!`,
+        designId: design.id,
+      })
     } catch (error) {
       console.error("Upload error:", error)
       setUploadState({
         status: "error",
         progress: 0,
-        message: "Failed to upload and process your design. Please try again.",
+        message: error instanceof Error ? error.message : "Failed to upload and process your design. Please try again.",
       })
     }
   }
@@ -304,7 +213,7 @@ export default function UploadPage() {
   }
 
   if (!user) {
-    return <div>Loading...</div>
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>
   }
 
   return (
@@ -336,9 +245,7 @@ export default function UploadPage() {
                 <CheckCircle className="w-8 h-8 text-green-600" />
               </div>
               <CardTitle className="text-2xl">AI Conversion Complete!</CardTitle>
-              <CardDescription>
-                Your {formatOptions[outputFormat].label.toLowerCase()} is ready for download.
-              </CardDescription>
+              <CardDescription>Your {outputFormat.toLowerCase()} is ready for download.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-4 justify-center">
@@ -461,28 +368,6 @@ export default function UploadPage() {
                     />
                   </div>
                 </div>
-
-                {ocrResults && (
-                  <Card className="bg-muted/50">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <Eye className="w-4 h-4" />
-                        Image Analysis Results
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="text-xs">
-                        <strong>Detected Text:</strong> {ocrResults.text}
-                      </div>
-                      <div className="text-xs">
-                        <strong>Confidence:</strong> {(ocrResults.confidence * 100).toFixed(1)}%
-                      </div>
-                      <div className="text-xs">
-                        <strong>Elements:</strong> {ocrResults.elements.join(", ")}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
               </CardContent>
             </Card>
 
@@ -543,7 +428,6 @@ export default function UploadPage() {
                   <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground">
                     <div>• Smart format detection</div>
                     <div>• Context-aware processing</div>
-                    <div>• OCR text analysis</div>
                     <div>• Intelligent optimization</div>
                     <div>• Error handling & validation</div>
                     <div>• Multi-format export</div>
