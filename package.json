@@ -5,7 +5,7 @@
   "scripts": {
     "android:build": "npm run cap:build && cd android && ./gradlew assembleRelease",
     "android:run": "npm run cap:build && cd android && ./gradlew assembleDebug && adb install -r app/build/outputs/apk/debug/app-debug.apk",
-    "build": "next build && next export",
+    "build": "next build",
     "cap:add:android": "npx cap add android",
     "cap:add:ios": "npx cap add ios",
     "cap:build": "npm run build && npx cap copy",
@@ -13,7 +13,6 @@
     "cap:open:ios": "npx cap open ios",
     "cap:sync": "npx cap sync",
     "dev": "next dev",
-    "export": "next export",
     "lint": "next lint",
     "start": "next start"
   },
