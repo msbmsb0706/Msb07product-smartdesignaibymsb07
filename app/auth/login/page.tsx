@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 import { useState } from "react"
 
 export default function LoginPage() {
@@ -24,22 +24,16 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      console.log("[v0] Attempting login with email:", email)
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (error) {
-        console.log("[v0] Login error:", error.message)
-        throw error
-      }
+      if (error) throw error
 
-      console.log("[v0] Login successful, user:", data.user?.email)
       router.push("/dashboard")
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during sign in"
-      console.log("[v0] Caught error:", errorMessage)
       setError(errorMessage)
     } finally {
       setIsLoading(false)
