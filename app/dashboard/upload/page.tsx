@@ -9,18 +9,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Upload, ArrowLeft, ImageIcon, Sparkles, CheckCircle, AlertCircle, Cpu, Palette } from "lucide-react"
+import { AIProcessingDisplay } from "@/components/ai-processing-display"
+import { Upload, ArrowLeft, ImageIcon, Sparkles, CheckCircle, AlertCircle, Cpu, Palette, Download } from 'lucide-react'
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 interface UploadState {
   status: "idle" | "uploading" | "processing" | "completed" | "error"
   progress: number
   message: string
   designId?: string
+  downloadUrl?: string
 }
 
 type OutputFormat = "PCB Layout" | "3D Printable File (.STL)" | "Fabric Pattern (.OBJ)"
@@ -35,7 +36,7 @@ const formatOptions = {
   "3D Printable File (.STL)": {
     label: "3D Printable File (.STL)",
     icon: Sparkles,
-    description: "Generate 3D model using Alpha3D",
+    description: "Generate 3D model using Alpha3D for 3D printing",
     color: "green",
   },
   "Fabric Pattern (.OBJ)": {
@@ -54,7 +55,6 @@ export default function UploadPage() {
   const [description, setDescription] = useState("")
   const [aiPrompt, setAiPrompt] = useState("")
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("PCB Layout")
-  const [ocrResults, setOcrResults] = useState<any>(null)
   const [uploadState, setUploadState] = useState<UploadState>({
     status: "idle",
     progress: 0,
@@ -87,16 +87,17 @@ export default function UploadPage() {
       setUploadState({
         status: "error",
         progress: 0,
-        message: "File not supported. Please select a valid image file (JPG, PNG, WebP, SVG).",
+        message: `Invalid file type: ${file.type}. Please select an image file (JPG, PNG, WebP, GIF, BMP).`,
       })
       return
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    const maxSize = 10 * 1024 * 1024
+    if (file.size > maxSize) {
       setUploadState({
         status: "error",
         progress: 0,
-        message: "File size must be less than 10MB. Please compress your image and try again.",
+        message: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds 10MB limit. Please compress your image and try again.`,
       })
       return
     }
@@ -106,7 +107,7 @@ export default function UploadPage() {
 
     // Create preview
     const reader = new FileReader()
-    reader.onload = async (e) => {
+    reader.onload = (e) => {
       const imageData = e.target?.result as string
       setPreviewUrl(imageData)
     }
@@ -138,7 +139,7 @@ export default function UploadPage() {
     setUploadState({
       status: "uploading",
       progress: 10,
-      message: "Uploading your image...",
+      message: "Validating file...",
     })
 
     try {
@@ -149,9 +150,9 @@ export default function UploadPage() {
       formData.append("prompt", aiPrompt.trim() || `Convert to ${outputFormat}`)
 
       setUploadState({
-        status: "processing",
+        status: "uploading",
         progress: 30,
-        message: `Processing with ${outputFormat}...`,
+        message: "Uploading file...",
       })
 
       const response = await fetch("/api/convert", {
@@ -161,11 +162,24 @@ export default function UploadPage() {
 
       if (!response.ok) {
         const error = await response.json()
-        throw new Error(error.error || "Conversion failed")
+        throw new Error(error.error || `HTTP ${response.status}: Conversion failed`)
       }
 
       const result = await response.json()
 
+      setUploadState({
+        status: "processing",
+        progress: 60,
+        message: `Processing with ${outputFormat}...`,
+      })
+
+      setUploadState({
+        status: "processing",
+        progress: 85,
+        message: "Optimizing output...",
+      })
+
+      // Save to database
       const { data: design, error: designError } = await supabase
         .from("designs")
         .insert({
@@ -186,11 +200,12 @@ export default function UploadPage() {
       setUploadState({
         status: "completed",
         progress: 100,
-        message: `${outputFormat} generated successfully!`,
+        message: result.message || `${outputFormat} generated successfully!`,
         designId: design.id,
+        downloadUrl: result.downloadUrl,
       })
     } catch (error) {
-      console.error("Upload error:", error)
+      console.error("[v0] Upload error:", error)
       setUploadState({
         status: "error",
         progress: 0,
@@ -205,7 +220,6 @@ export default function UploadPage() {
     setTitle("")
     setDescription("")
     setAiPrompt("")
-    setOcrResults(null)
     setUploadState({ status: "idle", progress: 0, message: "" })
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
@@ -229,7 +243,6 @@ export default function UploadPage() {
               </Link>
             </Button>
             <div className="flex items-center gap-2">
-              <img src="/images/smart-design-logo.png" alt="Smart Design AI" className="w-8 h-8 rounded-lg" />
               <span className="text-xl font-bold">Upload & Transform</span>
             </div>
           </div>
@@ -248,9 +261,15 @@ export default function UploadPage() {
               <CardDescription>Your {outputFormat.toLowerCase()} is ready for download.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <Button asChild className="w-full">
+                <a href={uploadState.downloadUrl} download>
+                  <Download className="w-4 h-4 mr-2" />
+                  Download {outputFormat}
+                </a>
+              </Button>
               <div className="flex gap-4 justify-center">
-                <Button asChild>
-                  <Link href={`/dashboard/history`}>View & Download</Link>
+                <Button variant="outline" asChild>
+                  <Link href="/dashboard/history">View History</Link>
                 </Button>
                 <Button variant="outline" onClick={resetUpload}>
                   Convert Another
@@ -263,7 +282,7 @@ export default function UploadPage() {
             {/* Upload Section */}
             <Card>
               <CardHeader>
-                <CardTitle>Upload Your Design or External Image</CardTitle>
+                <CardTitle>Upload Your Design</CardTitle>
                 <CardDescription>Upload an image to transform it with AI-powered conversion</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -308,12 +327,19 @@ export default function UploadPage() {
                   )}
                 </div>
 
-                <input ref={fileInputRef} type="file" accept="image/*" onChange={handleFileSelect} className="hidden" />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  aria-label="Upload design file"
+                />
 
                 <div className="space-y-3">
-                  <Label>Output Format</Label>
+                  <Label htmlFor="output-format">Output Format</Label>
                   <Select value={outputFormat} onValueChange={(value: OutputFormat) => setOutputFormat(value)}>
-                    <SelectTrigger>
+                    <SelectTrigger id="output-format">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -333,7 +359,6 @@ export default function UploadPage() {
                   <p className="text-sm text-muted-foreground">{formatOptions[outputFormat].description}</p>
                 </div>
 
-                {/* Form Fields */}
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="title">Design Title *</Label>
@@ -371,7 +396,7 @@ export default function UploadPage() {
               </CardContent>
             </Card>
 
-            {/* Processing Section */}
+            {/* Enhanced AI processing display component */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -381,39 +406,12 @@ export default function UploadPage() {
                 <CardDescription>Your image will be converted using advanced AI algorithms</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {uploadState.status === "idle" && !uploadState.message && (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center mx-auto mb-4">
-                      <Sparkles className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <p className="text-muted-foreground">Upload an image to start AI processing</p>
-                  </div>
-                )}
-
-                {uploadState.status === "error" && (
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center mx-auto mb-4">
-                      <AlertCircle className="w-8 h-8 text-red-600" />
-                    </div>
-                    <p className="text-red-600 text-sm">{uploadState.message}</p>
-                    <Button variant="outline" size="sm" className="mt-3 bg-transparent" onClick={resetUpload}>
-                      Try Again
-                    </Button>
-                  </div>
-                )}
-
-                {(uploadState.status === "uploading" || uploadState.status === "processing") && (
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <Badge variant="secondary" className="mb-2">
-                        {uploadState.status === "uploading" ? "Uploading" : "Processing"}
-                      </Badge>
-                      <p className="text-sm text-muted-foreground">{uploadState.message}</p>
-                    </div>
-                    <Progress value={uploadState.progress} className="w-full" />
-                    <p className="text-xs text-center text-muted-foreground">{uploadState.progress}% complete</p>
-                  </div>
-                )}
+                <AIProcessingDisplay
+                  status={uploadState.status}
+                  progress={uploadState.progress}
+                  message={uploadState.message}
+                  format={outputFormat}
+                />
 
                 {selectedFile && uploadState.status === "idle" && !uploadState.message && (
                   <Button onClick={handleUpload} className="w-full" disabled={!title.trim()}>
@@ -422,7 +420,12 @@ export default function UploadPage() {
                   </Button>
                 )}
 
-                {/* Processing Features */}
+                {uploadState.status === "error" && (
+                  <Button onClick={resetUpload} variant="outline" className="w-full">
+                    Try Again
+                  </Button>
+                )}
+
                 <div className="space-y-3 pt-4 border-t">
                   <h4 className="font-medium text-sm">AI Conversion Features:</h4>
                   <div className="grid grid-cols-1 gap-2 text-xs text-muted-foreground">

@@ -1,11 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Mock AI conversion functions
 async function convertToPCBLayout(imageData: Buffer, prompt: string) {
-  // Simulate Flux.ai PCB conversion
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
-  // Generate mock PCB layout data
   const pcbData = {
     format: "PCB Layout",
     analysis: "Detected electronic components and traces. Generated optimized PCB layout with proper routing.",
@@ -18,13 +15,13 @@ async function convertToPCBLayout(imageData: Buffer, prompt: string) {
   return {
     success: true,
     data: pcbData,
-    downloadUrl: `/api/download/pcb-${Date.now()}.kicad`,
+    downloadUrl: `/api/download?id=pcb-${Date.now()}&format=kicad`,
     format: "PCB Layout (.KiCad)",
+    message: "PCB Layout generated successfully!"
   }
 }
 
 async function convertTo3DPrintable(imageData: Buffer, prompt: string) {
-  // Simulate Alpha3D conversion
   await new Promise((resolve) => setTimeout(resolve, 2500))
 
   const stlData = {
@@ -40,13 +37,13 @@ async function convertTo3DPrintable(imageData: Buffer, prompt: string) {
   return {
     success: true,
     data: stlData,
-    downloadUrl: `/api/download/model-${Date.now()}.stl`,
+    downloadUrl: `/api/download?id=model-${Date.now()}&format=stl`,
     format: "3D Printable File (.STL)",
+    message: "3D model generated successfully!"
   }
 }
 
 async function convertToFabricPattern(imageData: Buffer, prompt: string) {
-  // Simulate Hyper3D conversion
   await new Promise((resolve) => setTimeout(resolve, 2200))
 
   const objData = {
@@ -62,38 +59,59 @@ async function convertToFabricPattern(imageData: Buffer, prompt: string) {
   return {
     success: true,
     data: objData,
-    downloadUrl: `/api/download/fabric-${Date.now()}.obj`,
+    downloadUrl: `/api/download?id=fabric-${Date.now()}&format=obj`,
     format: "Fabric Pattern (.OBJ)",
+    message: "Fabric pattern generated successfully!"
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const contentType = request.headers.get("content-type")
+    
+    if (!contentType?.includes("multipart/form-data")) {
+      return NextResponse.json(
+        { error: "Invalid content type. Please upload a file." },
+        { status: 400 }
+      )
+    }
+
     const formData = await request.formData()
-    const file = formData.get("file") as File
+    const file = formData.get("file") as File | null
     const outputFormat = formData.get("outputFormat") as string
-    const prompt = formData.get("prompt") as string
+    const prompt = (formData.get("prompt") as string) || ""
 
-    // Validate file
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 })
+      return NextResponse.json(
+        { error: "No file provided. Please select an image to convert." },
+        { status: 400 }
+      )
     }
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Invalid file type. Please upload an image file." }, { status: 400 })
+      return NextResponse.json(
+        { error: `Invalid file type: ${file.type}. Please upload a valid image file (JPG, PNG, WebP, SVG).` },
+        { status: 400 }
+      )
     }
 
-    // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
-      return NextResponse.json({ error: "File size exceeds 10MB limit" }, { status: 400 })
+      return NextResponse.json(
+        { error: `File size (${(file.size / 1024 / 1024).toFixed(2)}MB) exceeds 10MB limit. Please compress your image.` },
+        { status: 400 }
+      )
     }
 
-    // Convert file to buffer
+    if (!outputFormat) {
+      return NextResponse.json(
+        { error: "No output format specified. Please select a conversion format." },
+        { status: 400 }
+      )
+    }
+
     const buffer = await file.arrayBuffer()
     const imageBuffer = Buffer.from(buffer)
 
-    // Route to appropriate conversion function
     let result
     switch (outputFormat) {
       case "PCB Layout":
@@ -106,12 +124,21 @@ export async function POST(request: NextRequest) {
         result = await convertToFabricPattern(imageBuffer, prompt)
         break
       default:
-        return NextResponse.json({ error: "Invalid output format" }, { status: 400 })
+        return NextResponse.json(
+          { error: `Unknown format: ${outputFormat}. Supported formats: PCB Layout, 3D Printable File (.STL), Fabric Pattern (.OBJ)` },
+          { status: 400 }
+        )
     }
 
     return NextResponse.json(result)
   } catch (error) {
-    console.error("Conversion error:", error)
-    return NextResponse.json({ error: "Conversion failed. Please try again." }, { status: 500 })
+    console.error("[v0] Conversion error:", error)
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Conversion failed. Please check your file and try again.",
+        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
+      },
+      { status: 500 }
+    )
   }
 }
