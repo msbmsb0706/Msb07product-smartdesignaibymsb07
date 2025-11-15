@@ -1,16 +1,15 @@
 "use client"
 
 import type React from "react"
-import { createClient } from "@/lib/supabase/client"
+import { signUpAction } from "@/lib/auth-actions"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
-import { Eye, EyeOff, Check, X } from "lucide-react"
+import { Eye, EyeOff, Check, X } from 'lucide-react'
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 interface PasswordStrength {
@@ -69,13 +68,11 @@ export default function SignUpPage() {
   const [showRepeatPassword, setShowRepeatPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
 
   const passwordStrength = checkPasswordStrength(password)
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
@@ -92,30 +89,14 @@ export default function SignUpPage() {
     }
 
     try {
-      console.log("[v0] Attempting sign up with email:", email)
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
-          data: {
-            display_name: displayName,
-          },
-        },
-      })
-
-      if (error) {
-        console.log("[v0] Sign up error:", error.message)
-        throw error
+      const result = await signUpAction(email, password, displayName)
+      if (result?.error) {
+        setError(result.error)
+        setIsLoading(false)
       }
-
-      console.log("[v0] Sign up successful, user:", data.user?.email)
-      router.push("/auth/sign-up-success")
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An error occurred during sign up"
-      console.log("[v0] Caught error:", errorMessage)
       setError(errorMessage)
-    } finally {
       setIsLoading(false)
     }
   }
